@@ -4,3 +4,5 @@ SafeTune/
 __pycache__/
 *.py[cod]
 .pytest_cache/
+
+reports/auditkit_comparison.json
