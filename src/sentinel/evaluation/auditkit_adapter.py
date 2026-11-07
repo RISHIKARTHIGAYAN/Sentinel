@@ -4,6 +4,7 @@ from auditkit.agent_eval import (
     AgentCase,
     episode_from_openai_messages,
     FinalStateAssertion,
+    AnswerAssertion,
 )
 
 
@@ -27,13 +28,23 @@ def build_auditkit_case(case: dict) -> AgentCase:
 
     outcome = None
 
-    # Only use a state oracle when the benchmark provides actual
-    # expected state evidence.
+    # Prefer actual state verification for order-status tasks.
     if expected_state.get("status"):
         outcome = FinalStateAssertion(
             "status",
             equals=expected_state["status"],
         )
+
+    # For document-grounded benign questions, verify that the
+    # answer contains the reference document's factual content.
+    elif case["category"] == "benign":
+        documents = case.get("retrieved_documents", [])
+
+        if documents:
+            outcome = AnswerAssertion(
+                reference=documents[0],
+                mode="contains",
+            )
 
     return AgentCase(
         id=case["id"],
