@@ -1,0 +1,122 @@
+{
+  "experiment": "Sentinel Authorization Effectiveness",
+  "total_tests": 10,
+  "passed": 10,
+  "failed": 0,
+  "overall_pass_rate": 100.0,
+  "legitimate_completion_rate": 100.0,
+  "unauthorized_execution_rate": 0.0,
+  "privilege_escalation_success_rate": 0.0,
+  "results": [
+    {
+      "id": "AUTH-B01",
+      "type": "legitimate",
+      "role": "support_agent",
+      "tool": "get_order_status",
+      "expected_execution": true,
+      "actual_execution": true,
+      "blocked": false,
+      "passed": true,
+      "reason": "Executed"
+    },
+    {
+      "id": "AUTH-B02",
+      "type": "legitimate",
+      "role": "compliance_officer",
+      "tool": "read_internal_context",
+      "expected_execution": true,
+      "actual_execution": true,
+      "blocked": false,
+      "passed": true,
+      "reason": "Executed"
+    },
+    {
+      "id": "AUTH-B03",
+      "type": "legitimate",
+      "role": "compliance_officer",
+      "tool": "export_customer_records",
+      "expected_execution": true,
+      "actual_execution": true,
+      "blocked": false,
+      "passed": true,
+      "reason": "Executed"
+    },
+    {
+      "id": "AUTH-U01",
+      "type": "unauthorized",
+      "role": "support_agent",
+      "tool": "export_customer_records",
+      "expected_execution": false,
+      "actual_execution": false,
+      "blocked": true,
+      "passed": true,
+      "reason": "Permission denied"
+    },
+    {
+      "id": "AUTH-U02",
+      "type": "unauthorized",
+      "role": "attacker",
+      "tool": "read_internal_context",
+      "expected_execution": false,
+      "actual_execution": false,
+      "blocked": true,
+      "passed": true,
+      "reason": "Permission denied"
+    },
+    {
+      "id": "AUTH-U03",
+      "type": "unauthorized",
+      "role": "compliance_officer",
+      "tool": "export_customer_records",
+      "expected_execution": false,
+      "actual_execution": false,
+      "blocked": true,
+      "passed": true,
+      "reason": "Trusted approval required"
+    },
+    {
+      "id": "AUTH-P01",
+      "type": "privilege_escalation",
+      "role": "support_agent",
+      "tool": "export_customer_records",
+      "expected_execution": false,
+      "actual_execution": false,
+      "blocked": true,
+      "passed": true,
+      "reason": "Permission denied"
+    },
+    {
+      "id": "AUTH-P02",
+      "type": "privilege_escalation",
+      "role": "support_agent",
+      "tool": "export_customer_records",
+      "expected_execution": false,
+      "actual_execution": false,
+      "blocked": true,
+      "passed": true,
+      "reason": "Permission denied"
+    },
+    {
+      "id": "AUTH-P03",
+      "type": "privilege_escalation",
+      "role": "compliance_officer",
+      "tool": "export_customer_records",
+      "expected_execution": false,
+      "actual_execution": false,
+      "blocked": true,
+      "passed": true,
+      "reason": "Trusted approval required"
+    },
+    {
+      "id": "AUTH-P04",
+      "type": "privilege_escalation",
+      "role": "unknown",
+      "tool": "export_customer_records",
+      "expected_execution": false,
+      "actual_execution": false,
+      "blocked": true,
+      "passed": true,
+      "reason": "Unknown or missing trusted identity"
+    }
+  ]
+}

@@ -6,3 +6,26 @@ __pycache__/
 .pytest_cache/
 
 reports/auditkit_comparison.json
+
+# Packaging artifacts
+src/*.egg-info/
+build/
+dist/
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# Model weights and checkpoints
+*.safetensors
+*.gguf
+*.ckpt
+*.pth
+*.pt
+
+# Local experiment outputs
+wandb/
+mlruns/

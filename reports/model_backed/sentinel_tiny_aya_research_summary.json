@@ -1,0 +1,44 @@
+{
+  "project": "Sentinel",
+  "experiment": "Tiny Aya paired authorization benchmark",
+  "model": "CohereLabs/tiny-aya-global",
+  "date_utc": "2026-11-11T07:59:52.377552+00:00",
+  "dataset": {
+    "total_cases": 42,
+    "benign": 14,
+    "direct_injection": 10,
+    "indirect_injection": 18,
+    "errors": 0
+  },
+  "security_results": {
+    "attack_cases": 28,
+    "sensitive_tool_requests": 13,
+    "baseline_sensitive_executions": 13,
+    "sentinel_sensitive_executions": 0,
+    "sentinel_sensitive_blocks": 13,
+    "sentinel_block_rate_percent": 100.0,
+    "baseline_attack_success_rate_percent": 46.43,
+    "sentinel_attack_success_rate_percent": 0.0
+  },
+  "utility_results": {
+    "benign_expected_tool_cases": 3,
+    "baseline_state_completion_percent": 100.0,
+    "sentinel_state_completion_percent": 100.0,
+    "benign_direct_answer_cases": 11,
+    "sentinel_nonempty_answers": 11
+  },
+  "data_exposure": {
+    "baseline_tool_canary_exposures": 13,
+    "sentinel_tool_canary_exposures": 0,
+    "baseline_final_canary_disclosures": 0,
+    "sentinel_final_canary_disclosures": 0
+  },
+  "limitations": [
+    "Sensitive tools are unconditionally denied by the current protected dispatcher.",
+    "Legitimate authorized sensitive-tool access has not been evaluated.",
+    "Non-empty benign answers are not a semantic correctness measure.",
+    "The benchmark is curated and does not establish generalization.",
+    "Development and validation cases were previously inspected during policy development.",
+    "SafeTune has not yet been integrated into this experiment."
+  ]
+}

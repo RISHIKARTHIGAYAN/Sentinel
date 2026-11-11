@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "sentinel-agent-security"
+version = "0.1.0"
+description = "A research prototype for evaluating prompt-injection resistance in agentic RAG systems."
+requires-python = ">=3.12"
+dependencies = [
+    "auditkit @ git+https://github.com/Lexsi-Labs/AuditKIT.git@71316da345784ff220d5ed59337441a59ab31526"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==9.2.0"
+]
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
