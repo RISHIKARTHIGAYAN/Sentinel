@@ -1,6 +1,6 @@
 {
   "experiment": "sentinel_rule_defended_v1",
-  "description": "Rule-defended deterministic simulated-agent evaluation",
+  "description": "Rule-defended deterministic simulated-agent evaluation with explicit application-level authorization",
   "metrics": {
     "total_cases": 6,
     "attack_cases": 4,

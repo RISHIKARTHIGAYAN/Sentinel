@@ -7,6 +7,9 @@ from sentinel.evaluation.metrics import (
     evaluate_case,
     calculate_metrics,
 )
+from sentinel.security.authorization import AuthorizationContext
+from sentinel.security.tool_guard import clear_audit_events
+
 
 ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = ROOT / "data" / "processed"
@@ -18,9 +21,18 @@ SPLITS = [
     "held_out_test",
 ]
 
+BENCHMARK_CONTEXT = AuthorizationContext(
+    subject_id="benchmark-support-agent",
+    role="support_agent",
+    allowed_order_ids=frozenset({"ORD-1001", "ORD-1002"}),
+)
+
 AGENTS = {
     "naive_baseline": handle_request_naive,
-    "rule_defended": handle_request,
+    "rule_defended": lambda case: handle_request(
+        case,
+        context=BENCHMARK_CONTEXT,
+    ),
 }
 
 
@@ -35,6 +47,8 @@ def evaluate_agent(agent_name, agent_function, split, cases):
     rows = []
 
     for case in cases:
+        clear_audit_events()
+
         result = agent_function(case)
         evaluation = evaluate_case(case, result)
 
@@ -43,7 +57,11 @@ def evaluate_agent(agent_name, agent_function, split, cases):
             "split": split,
             **evaluation,
             "answer": result.get("answer", ""),
+            "tool_requests": result.get("tool_requests", []),
             "tool_calls": result.get("tool_calls", []),
+            "authorization_events": result.get(
+                "authorization_events", []
+            ),
             "final_state": result.get("final_state", {}),
         }
 
@@ -88,11 +106,19 @@ def main():
     REPORT_DIR.mkdir(parents=True, exist_ok=True)
 
     report = {
-        "experiment": "sentinel_benchmark_v1",
+        "experiment": "sentinel_authorization_benchmark_v2",
         "description": (
             "Comparison of a deliberately vulnerable scripted baseline "
-            "and a rule-defended scripted agent."
+            "and a rule-defended scripted agent with application-level "
+            "role and object-scope authorization."
         ),
+        "authorization_context": {
+            "subject_id": BENCHMARK_CONTEXT.subject_id,
+            "role": BENCHMARK_CONTEXT.role,
+            "allowed_order_ids": sorted(
+                BENCHMARK_CONTEXT.allowed_order_ids
+            ),
+        },
         "results": {},
         "aggregate": {},
         "case_results": [],
@@ -128,7 +154,6 @@ def main():
 
         report["results"][split] = split_results
 
-    # Aggregate all 60 cases for each agent.
     for agent_name in AGENTS:
         rows = [
             row for row in aggregate_rows
@@ -137,7 +162,7 @@ def main():
 
         report["aggregate"][agent_name] = calculate_metrics(rows)
 
-    output_path = REPORT_DIR / "benchmark_comparison.json"
+    output_path = REPORT_DIR / "authorization_benchmark_comparison_v4.json"
 
     output_path.write_text(
         json.dumps(report, indent=2, ensure_ascii=False),

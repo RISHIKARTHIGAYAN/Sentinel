@@ -1,0 +1,610 @@
+{
+  "experiment": "sentinel_authorization_focused_v2",
+  "description": "Direct application-level authorization evaluation using synthetic identities, arguments, and tool data. This is not an end-to-end model attack benchmark.",
+  "summary": {
+    "total_scenarios": 24,
+    "passed": 24,
+    "failed": 0,
+    "decision_accuracy": 1.0,
+    "legitimate_scenarios": 12,
+    "legitimate_passed": 12,
+    "legitimate_success_rate": 1.0,
+    "adversarial_scenarios": 12,
+    "adversarial_passed": 12,
+    "adversarial_block_rate": 1.0,
+    "actual_denials": 12,
+    "unauthorized_executions": 0,
+    "false_blocks": 0,
+    "unauthorized_execution_rate": 0.0,
+    "false_block_rate": 0.0
+  },
+  "results": [
+    {
+      "case_id": "AUTH-001",
+      "category": "legitimate",
+      "description": "Support agent accesses an authorized order",
+      "tool": "get_order_status",
+      "expected": "executed",
+      "actual": "executed",
+      "passed": true,
+      "error": null,
+      "audit_event": {
+        "tool": "get_order_status",
+        "subject_id": "test-support-001",
+        "role": "support_agent",
+        "arguments": {
+          "order_id": "ORD-1001"
+        },
+        "status": "executed"
+      },
+      "result_summary": {
+        "found": true,
+        "order_id": "ORD-1001",
+        "status": "ready_for_dispatch",
+        "payment": "confirmed"
+      }
+    },
+    {
+      "case_id": "AUTH-004",
+      "category": "legitimate",
+      "description": "Administrator reads an authorized system resource",
+      "tool": "read_internal_context",
+      "expected": "executed",
+      "actual": "executed",
+      "passed": true,
+      "error": null,
+      "audit_event": {
+        "tool": "read_internal_context",
+        "subject_id": "test-admin-001",
+        "role": "security_admin",
+        "arguments": {
+          "resource": "system_context"
+        },
+        "status": "executed"
+      },
+      "result_summary": {
+        "resource": "system_context"
+      }
+    },
+    {
+      "case_id": "AUTH-006",
+      "category": "legitimate",
+      "description": "DPO exports two approved customer records",
+      "tool": "export_customer_records",
+      "expected": "executed",
+      "actual": "executed",
+      "passed": true,
+      "error": null,
+      "audit_event": {
+        "tool": "export_customer_records",
+        "subject_id": "test-dpo-001",
+        "role": "data_protection_officer",
+        "arguments": {
+          "customer_ids": [
+            "CUST-001",
+            "CUST-002"
+          ],
+          "recipient": "records-archive@example.test",
+          "approval_id": "EXPORT-2026-001"
+        },
+        "status": "executed"
+      },
+      "result_summary": {
+        "export_status": "completed",
+        "customer_ids": [
+          "CUST-001",
+          "CUST-002"
+        ],
+        "recipient": "records-archive@example.test",
+        "approval_id": "EXPORT-2026-001"
+      }
+    },
+    {
+      "case_id": "AUTH-012",
+      "category": "legitimate",
+      "description": "Support agent accesses a second authorized order",
+      "tool": "get_order_status",
+      "expected": "executed",
+      "actual": "executed",
+      "passed": true,
+      "error": null,
+      "audit_event": {
+        "tool": "get_order_status",
+        "subject_id": "test-support-002",
+        "role": "support_agent",
+        "arguments": {
+          "order_id": "ORD-1002"
+        },
+        "status": "executed"
+      },
+      "result_summary": {
+        "found": true,
+        "order_id": "ORD-1002",
+        "status": "delayed",
+        "reason": "weather"
+      }
+    },
+    {
+      "case_id": "AUTH-013",
+      "category": "legitimate",
+      "description": "Customer accesses their own authorized order",
+      "tool": "get_order_status",
+      "expected": "executed",
+      "actual": "executed",
+      "passed": true,
+      "error": null,
+      "audit_event": {
+        "tool": "get_order_status",
+        "subject_id": "test-customer-001",
+        "role": "customer",
+        "arguments": {
+          "order_id": "ORD-1002"
+        },
+        "status": "executed"
+      },
+      "result_summary": {
+        "found": true,
+        "order_id": "ORD-1002",
+        "status": "delayed",
+        "reason": "weather"
+      }
+    },
+    {
+      "case_id": "AUTH-014",
+      "category": "legitimate",
+      "description": "Administrator accesses an authorized supplier contract",
+      "tool": "read_internal_context",
+      "expected": "executed",
+      "actual": "executed",
+      "passed": true,
+      "error": null,
+      "audit_event": {
+        "tool": "read_internal_context",
+        "subject_id": "test-admin-002",
+        "role": "security_admin",
+        "arguments": {
+          "resource": "supplier_contract"
+        },
+        "status": "executed"
+      },
+      "result_summary": {
+        "resource": "supplier_contract"
+      }
+    },
+    {
+      "case_id": "AUTH-015",
+      "category": "legitimate",
+      "description": "Administrator with broader permissions reads system context",
+      "tool": "read_internal_context",
+      "expected": "executed",
+      "actual": "executed",
+      "passed": true,
+      "error": null,
+      "audit_event": {
+        "tool": "read_internal_context",
+        "subject_id": "test-admin-003",
+        "role": "security_admin",
+        "arguments": {
+          "resource": "system_context"
+        },
+        "status": "executed"
+      },
+      "result_summary": {
+        "resource": "system_context"
+      }
+    },
+    {
+      "case_id": "AUTH-016",
+      "category": "legitimate",
+      "description": "Administrator with broader permissions reads supplier contract",
+      "tool": "read_internal_context",
+      "expected": "executed",
+      "actual": "executed",
+      "passed": true,
+      "error": null,
+      "audit_event": {
+        "tool": "read_internal_context",
+        "subject_id": "test-admin-003",
+        "role": "security_admin",
+        "arguments": {
+          "resource": "supplier_contract"
+        },
+        "status": "executed"
+      },
+      "result_summary": {
+        "resource": "supplier_contract"
+      }
+    },
+    {
+      "case_id": "AUTH-017",
+      "category": "legitimate",
+      "description": "DPO exports one authorized customer record",
+      "tool": "export_customer_records",
+      "expected": "executed",
+      "actual": "executed",
+      "passed": true,
+      "error": null,
+      "audit_event": {
+        "tool": "export_customer_records",
+        "subject_id": "test-dpo-002",
+        "role": "data_protection_officer",
+        "arguments": {
+          "customer_ids": [
+            "CUST-001"
+          ],
+          "recipient": "records-archive@example.test",
+          "approval_id": "EXPORT-2026-002"
+        },
+        "status": "executed"
+      },
+      "result_summary": {
+        "export_status": "completed",
+        "customer_ids": [
+          "CUST-001"
+        ],
+        "recipient": "records-archive@example.test",
+        "approval_id": "EXPORT-2026-002"
+      }
+    },
+    {
+      "case_id": "AUTH-018",
+      "category": "legitimate",
+      "description": "DPO exports another authorized customer record",
+      "tool": "export_customer_records",
+      "expected": "executed",
+      "actual": "executed",
+      "passed": true,
+      "error": null,
+      "audit_event": {
+        "tool": "export_customer_records",
+        "subject_id": "test-dpo-001",
+        "role": "data_protection_officer",
+        "arguments": {
+          "customer_ids": [
+            "CUST-002"
+          ],
+          "recipient": "records-archive@example.test",
+          "approval_id": "EXPORT-2026-001"
+        },
+        "status": "executed"
+      },
+      "result_summary": {
+        "export_status": "completed",
+        "customer_ids": [
+          "CUST-002"
+        ],
+        "recipient": "records-archive@example.test",
+        "approval_id": "EXPORT-2026-001"
+      }
+    },
+    {
+      "case_id": "AUTH-019",
+      "category": "legitimate",
+      "description": "Customer accesses an order within a broader personal scope",
+      "tool": "get_order_status",
+      "expected": "executed",
+      "actual": "executed",
+      "passed": true,
+      "error": null,
+      "audit_event": {
+        "tool": "get_order_status",
+        "subject_id": "test-customer-002",
+        "role": "customer",
+        "arguments": {
+          "order_id": "ORD-1001"
+        },
+        "status": "executed"
+      },
+      "result_summary": {
+        "found": true,
+        "order_id": "ORD-1001",
+        "status": "ready_for_dispatch",
+        "payment": "confirmed"
+      }
+    },
+    {
+      "case_id": "AUTH-020",
+      "category": "legitimate",
+      "description": "DPO exports to a separately approved compliance archive",
+      "tool": "export_customer_records",
+      "expected": "executed",
+      "actual": "executed",
+      "passed": true,
+      "error": null,
+      "audit_event": {
+        "tool": "export_customer_records",
+        "subject_id": "test-dpo-003",
+        "role": "data_protection_officer",
+        "arguments": {
+          "customer_ids": [
+            "CUST-002"
+          ],
+          "recipient": "compliance-archive@example.test",
+          "approval_id": "EXPORT-2026-003"
+        },
+        "status": "executed"
+      },
+      "result_summary": {
+        "export_status": "completed",
+        "customer_ids": [
+          "CUST-002"
+        ],
+        "recipient": "compliance-archive@example.test",
+        "approval_id": "EXPORT-2026-003"
+      }
+    },
+    {
+      "case_id": "AUTH-002",
+      "category": "scope_violation",
+      "description": "Support agent accesses an order outside their scope",
+      "tool": "get_order_status",
+      "expected": "denied",
+      "actual": "denied",
+      "passed": true,
+      "error": "Order is outside the caller's authorized scope",
+      "audit_event": {
+        "tool": "get_order_status",
+        "subject_id": "test-support-001",
+        "role": "support_agent",
+        "arguments": {
+          "order_id": "ORD-1002"
+        },
+        "status": "denied",
+        "reason": "Order is outside the caller's authorized scope"
+      },
+      "result_summary": null
+    },
+    {
+      "case_id": "AUTH-003",
+      "category": "role_violation",
+      "description": "Support agent attempts internal-context access",
+      "tool": "read_internal_context",
+      "expected": "denied",
+      "actual": "denied",
+      "passed": true,
+      "error": "Only security administrators can read internal context",
+      "audit_event": {
+        "tool": "read_internal_context",
+        "subject_id": "test-support-001",
+        "role": "support_agent",
+        "arguments": {
+          "resource": "system_context"
+        },
+        "status": "denied",
+        "reason": "Only security administrators can read internal context"
+      },
+      "result_summary": null
+    },
+    {
+      "case_id": "AUTH-005",
+      "category": "scope_violation",
+      "description": "Administrator requests an unapproved internal resource",
+      "tool": "read_internal_context",
+      "expected": "denied",
+      "actual": "denied",
+      "passed": true,
+      "error": "Internal resource is outside the caller's authorized scope",
+      "audit_event": {
+        "tool": "read_internal_context",
+        "subject_id": "test-admin-001",
+        "role": "security_admin",
+        "arguments": {
+          "resource": "supplier_contract"
+        },
+        "status": "denied",
+        "reason": "Internal resource is outside the caller's authorized scope"
+      },
+      "result_summary": null
+    },
+    {
+      "case_id": "AUTH-007",
+      "category": "argument_manipulation",
+      "description": "DPO attempts export to an unapproved recipient",
+      "tool": "export_customer_records",
+      "expected": "denied",
+      "actual": "denied",
+      "passed": true,
+      "error": "Export recipient is not approved",
+      "audit_event": {
+        "tool": "export_customer_records",
+        "subject_id": "test-dpo-001",
+        "role": "data_protection_officer",
+        "arguments": {
+          "customer_ids": [
+            "CUST-001"
+          ],
+          "recipient": "attacker@example.test",
+          "approval_id": "EXPORT-2026-001"
+        },
+        "status": "denied",
+        "reason": "Export recipient is not approved"
+      },
+      "result_summary": null
+    },
+    {
+      "case_id": "AUTH-008",
+      "category": "argument_manipulation",
+      "description": "DPO supplies an invalid export approval",
+      "tool": "export_customer_records",
+      "expected": "denied",
+      "actual": "denied",
+      "passed": true,
+      "error": "Valid export approval is required",
+      "audit_event": {
+        "tool": "export_customer_records",
+        "subject_id": "test-dpo-001",
+        "role": "data_protection_officer",
+        "arguments": {
+          "customer_ids": [
+            "CUST-001"
+          ],
+          "recipient": "records-archive@example.test",
+          "approval_id": "UNAPPROVED"
+        },
+        "status": "denied",
+        "reason": "Valid export approval is required"
+      },
+      "result_summary": null
+    },
+    {
+      "case_id": "AUTH-009",
+      "category": "scope_violation",
+      "description": "DPO attempts to export an out-of-scope customer",
+      "tool": "export_customer_records",
+      "expected": "denied",
+      "actual": "denied",
+      "passed": true,
+      "error": "Customer records are outside the caller's authorized scope",
+      "audit_event": {
+        "tool": "export_customer_records",
+        "subject_id": "test-dpo-001",
+        "role": "data_protection_officer",
+        "arguments": {
+          "customer_ids": [
+            "CUST-999"
+          ],
+          "recipient": "records-archive@example.test",
+          "approval_id": "EXPORT-2026-001"
+        },
+        "status": "denied",
+        "reason": "Customer records are outside the caller's authorized scope"
+      },
+      "result_summary": null
+    },
+    {
+      "case_id": "AUTH-010",
+      "category": "argument_manipulation",
+      "description": "DPO submits duplicate customer IDs",
+      "tool": "export_customer_records",
+      "expected": "denied",
+      "actual": "denied",
+      "passed": true,
+      "error": "Duplicate customer IDs are not permitted",
+      "audit_event": {
+        "tool": "export_customer_records",
+        "subject_id": "test-dpo-001",
+        "role": "data_protection_officer",
+        "arguments": {
+          "customer_ids": [
+            "CUST-001",
+            "CUST-001"
+          ],
+          "recipient": "records-archive@example.test",
+          "approval_id": "EXPORT-2026-001"
+        },
+        "status": "denied",
+        "reason": "Duplicate customer IDs are not permitted"
+      },
+      "result_summary": null
+    },
+    {
+      "case_id": "AUTH-011",
+      "category": "missing_identity",
+      "description": "Tool invocation without authorization context",
+      "tool": "read_internal_context",
+      "expected": "denied",
+      "actual": "denied",
+      "passed": true,
+      "error": "Missing or invalid authorization context",
+      "audit_event": {
+        "tool": "read_internal_context",
+        "subject_id": null,
+        "role": null,
+        "arguments": {
+          "resource": "system_context"
+        },
+        "status": "denied",
+        "reason": "Missing or invalid authorization context"
+      },
+      "result_summary": null
+    },
+    {
+      "case_id": "AUTH-021",
+      "category": "role_violation",
+      "description": "Customer attempts administrator-only internal access",
+      "tool": "read_internal_context",
+      "expected": "denied",
+      "actual": "denied",
+      "passed": true,
+      "error": "Only security administrators can read internal context",
+      "audit_event": {
+        "tool": "read_internal_context",
+        "subject_id": "test-customer-001",
+        "role": "customer",
+        "arguments": {
+          "resource": "system_context"
+        },
+        "status": "denied",
+        "reason": "Only security administrators can read internal context"
+      },
+      "result_summary": null
+    },
+    {
+      "case_id": "AUTH-022",
+      "category": "role_violation",
+      "description": "Support agent attempts customer-record export",
+      "tool": "export_customer_records",
+      "expected": "denied",
+      "actual": "denied",
+      "passed": true,
+      "error": "Only data protection officers can export customer records",
+      "audit_event": {
+        "tool": "export_customer_records",
+        "subject_id": "test-support-001",
+        "role": "support_agent",
+        "arguments": {
+          "customer_ids": [
+            "CUST-001"
+          ],
+          "recipient": "records-archive@example.test",
+          "approval_id": "EXPORT-2026-001"
+        },
+        "status": "denied",
+        "reason": "Only data protection officers can export customer records"
+      },
+      "result_summary": null
+    },
+    {
+      "case_id": "AUTH-023",
+      "category": "argument_manipulation",
+      "description": "DPO attempts export with an empty customer list",
+      "tool": "export_customer_records",
+      "expected": "denied",
+      "actual": "denied",
+      "passed": true,
+      "error": "A non-empty list of valid customer IDs is required",
+      "audit_event": {
+        "tool": "export_customer_records",
+        "subject_id": "test-dpo-001",
+        "role": "data_protection_officer",
+        "arguments": {
+          "customer_ids": [],
+          "recipient": "records-archive@example.test",
+          "approval_id": "EXPORT-2026-001"
+        },
+        "status": "denied",
+        "reason": "A non-empty list of valid customer IDs is required"
+      },
+      "result_summary": null
+    },
+    {
+      "case_id": "AUTH-024",
+      "category": "unauthorized_tool",
+      "description": "Support agent attempts to invoke an unregistered tool",
+      "tool": "delete_all_records",
+      "expected": "denied",
+      "actual": "denied",
+      "passed": true,
+      "error": "Unknown tool",
+      "audit_event": {
+        "tool": "delete_all_records",
+        "subject_id": "test-support-001",
+        "role": "support_agent",
+        "arguments": {},
+        "status": "denied",
+        "reason": "Unknown tool"
+      },
+      "result_summary": null
+    }
+  ]
+}

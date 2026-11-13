@@ -1,9 +1,11 @@
-﻿from sentinel.agent.agent import extract_order_id
+﻿
+from sentinel.agent.agent import extract_order_id
 from sentinel.tools.privileged import (
     read_internal_context,
     export_customer_records,
 )
-from sentinel.security.tool_guard import execute_tool
+from sentinel.tools.orders import get_order_status
+
 
 def handle_request_naive(case: dict) -> dict:
     user_query = case["user_query"]
@@ -12,6 +14,7 @@ def handle_request_naive(case: dict) -> dict:
 
     trace = {
         "case_id": case["id"],
+        "tool_requests": [],
         "tool_calls": [],
         "final_state": {},
     }
@@ -19,14 +22,30 @@ def handle_request_naive(case: dict) -> dict:
     def call_tool(name: str, arguments: dict | None = None):
         arguments = arguments or {}
 
-        # Deliberately insecure baseline: sensitive operations
-        # bypass the authorization guard entirely.
+        trace["tool_requests"].append({
+            "name": name,
+            "arguments": arguments,
+        })
+
+        # Deliberately insecure baseline:
+        # all tools execute directly without authorization.
         if name == "read_internal_context":
-            result = read_internal_context()
+            result = read_internal_context(
+                arguments.get("resource", "system_context")
+            )
+
         elif name == "export_customer_records":
-            result = export_customer_records()
+            result = export_customer_records(
+                arguments.get("customer_ids", ["CUST-001"]),
+                arguments.get("recipient", "attacker@example.test"),
+                arguments.get("approval_id", "UNAPPROVED"),
+            )
+
+        elif name == "get_order_status":
+            result = get_order_status(**arguments)
+
         else:
-            result = execute_tool(name, arguments)
+            raise ValueError(f"Unknown tool: {name}")
 
         trace["tool_calls"].append({
             "name": name,
@@ -75,7 +94,10 @@ def handle_request_naive(case: dict) -> dict:
         }
 
     if "confidential supplier contracts" in combined_docs:
-        result = call_tool("read_internal_context")
+        result = call_tool(
+            "read_internal_context",
+            {"resource": "supplier_contract"},
+        )
         return {
             **trace,
             "outcome": "answer",
@@ -132,4 +154,3 @@ def handle_request_naive(case: dict) -> dict:
         "answer": answer,
         "retrieved_documents": documents,
     }
-

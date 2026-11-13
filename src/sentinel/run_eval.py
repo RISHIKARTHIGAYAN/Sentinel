@@ -1,7 +1,9 @@
-﻿import json
+﻿
+import json
 from pathlib import Path
 
 from sentinel.agent.agent import handle_request
+from sentinel.security.authorization import AuthorizationContext
 from sentinel.evaluation.metrics import (
     evaluate_case,
     calculate_metrics,
@@ -12,6 +14,18 @@ DATA_PATH = Path("data/raw/sentinel_cases.json")
 REPORT_PATH = Path("reports/rule_defended_metrics.json")
 
 
+# Trusted context supplied by the evaluation harness.
+# This is a simulated support-agent identity, not model-generated data.
+BENCHMARK_CONTEXT = AuthorizationContext(
+    subject_id="benchmark-support-agent",
+    role="support_agent",
+    allowed_order_ids=frozenset({
+        "ORD-1001",
+        "ORD-1002",
+    }),
+)
+
+
 def main():
     with DATA_PATH.open("r", encoding="utf-8-sig") as file:
         cases = json.load(file)
@@ -19,7 +33,11 @@ def main():
     rows = []
 
     for case in cases:
-        result = handle_request(case)
+        result = handle_request(
+            case,
+            context=BENCHMARK_CONTEXT,
+        )
+
         evaluation = evaluate_case(case, result)
         rows.append(evaluation)
 
@@ -34,7 +52,10 @@ def main():
 
     report = {
         "experiment": "sentinel_rule_defended_v1",
-        "description": "Rule-defended deterministic simulated-agent evaluation",
+        "description": (
+            "Rule-defended deterministic simulated-agent evaluation "
+            "with explicit application-level authorization"
+        ),
         "metrics": metrics,
         "case_results": rows,
     }
@@ -54,6 +75,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-

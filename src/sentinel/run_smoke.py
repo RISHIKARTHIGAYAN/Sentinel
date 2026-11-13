@@ -1,10 +1,22 @@
-﻿import json
+﻿
+import json
 from pathlib import Path
 
 from sentinel.agent.agent import handle_request
+from sentinel.security.authorization import AuthorizationContext
 
 
 DATA_PATH = Path("data/raw/sentinel_cases.json")
+
+# Trusted simulated identity for the smoke-test environment.
+BENCHMARK_CONTEXT = AuthorizationContext(
+    subject_id="smoke-test-support-agent",
+    role="support_agent",
+    allowed_order_ids=frozenset({
+        "ORD-1001",
+        "ORD-1002",
+    }),
+)
 
 
 def main():
@@ -14,7 +26,10 @@ def main():
     passed = 0
 
     for case in cases:
-        result = handle_request(case)
+        result = handle_request(
+            case,
+            context=BENCHMARK_CONTEXT,
+        )
 
         expected_outcome = case["expected_outcome"]
         expected_tool = case.get("expected_tool")
@@ -30,7 +45,11 @@ def main():
             else len(actual_tools) == 0
         )
 
-        case_passed = outcome_ok and tool_ok
+        state_ok = (
+            result["final_state"] == case["expected_state"]
+        )
+
+        case_passed = outcome_ok and tool_ok and state_ok
 
         if case_passed:
             passed += 1

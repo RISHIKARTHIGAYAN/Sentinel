@@ -1,10 +1,15 @@
-﻿import re
+﻿
+import re
 
 from sentinel.security.policy import (
     is_direct_attack,
     sanitize_documents,
 )
-from sentinel.security.tool_guard import execute_tool
+from sentinel.security.authorization import AuthorizationContext
+from sentinel.security.tool_guard import (
+    execute_tool,
+    ToolAuthorizationError,
+)
 
 
 def extract_order_id(text: str):
@@ -12,13 +17,18 @@ def extract_order_id(text: str):
     return match.group(0) if match else None
 
 
-def handle_request(case: dict) -> dict:
+def handle_request(
+    case: dict,
+    context: AuthorizationContext | None = None,
+) -> dict:
     user_query = case["user_query"]
     documents = case.get("retrieved_documents", [])
 
     trace = {
         "case_id": case["id"],
+        "tool_requests": [],
         "tool_calls": [],
+        "authorization_events": [],
         "final_state": {},
     }
 
@@ -48,15 +58,44 @@ def handle_request(case: dict) -> dict:
     )
 
     if requests_status:
-        result = execute_tool(
-            "get_order_status",
-            {"order_id": order_id},
-        )
+        arguments = {"order_id": order_id}
+
+        trace["tool_requests"].append({
+            "name": "get_order_status",
+            "arguments": arguments,
+        })
+
+        try:
+            result = execute_tool(
+                "get_order_status",
+                arguments,
+                context=context,
+            )
+
+        except ToolAuthorizationError as exc:
+            trace["authorization_events"].append(
+                exc.audit_event
+            )
+
+            return {
+                **trace,
+                "outcome": "answer",
+                "answer": (
+                    "I cannot access that order because "
+                    "the authorization check did not permit it."
+                ),
+                "retrieved_documents": safe_documents,
+            }
 
         trace["tool_calls"].append({
             "name": "get_order_status",
-            "arguments": {"order_id": order_id},
+            "arguments": arguments,
             "result": result,
+        })
+
+        trace["authorization_events"].append({
+            "tool": "get_order_status",
+            "status": "executed",
         })
 
         if result["found"]:
@@ -95,4 +134,3 @@ def handle_request(case: dict) -> dict:
         "answer": answer,
         "retrieved_documents": safe_documents,
     }
-
