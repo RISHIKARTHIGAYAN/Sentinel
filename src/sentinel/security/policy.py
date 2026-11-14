@@ -55,6 +55,9 @@ INSTRUCTION_PATTERNS = [
     r"\bprivileged\s+access\b.*\b(retrieve|access|export|disclose)\b",
 
     # Attempts to replace the requested answer with restricted information.
+    r"\breplace\b.*\b(hidden|private|internal)\s+(operational\s+)?(instructions|data|prompt|configuration)\b",
+    r"\bignore\b.*\b(original\s+question|original\s+request|user'?s?\s+question)\b",
+    r"\b(expose|reveal|disclose)\b.*\b(internal|confidential|restricted)\s+(operational\s+)?(data|information|instructions)\b",
     r"\breplace\b.*\b(confidential|restricted|private|internal)\b",
     
     r"\boverride\b.*\b(previous|prior|system|security)\s+instructions\b",

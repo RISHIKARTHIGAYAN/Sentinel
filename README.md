@@ -1,3 +1,4 @@
+
 # Sentinel — Agentic AI Security
 
 Sentinel is a research prototype investigating prompt-injection resistance in agentic Retrieval-Augmented Generation (RAG) systems.
@@ -121,6 +122,109 @@ The results must be interpreted in the context of the current agent implementati
 
 The separate 24-scenario benchmark evaluates the authorization layer directly.
 
+### 4. Controlled Output-Security Evaluation
+
+Sentinel includes a controlled experiment evaluating whether its final-response output guard prevents exact synthetic canary values from leaking through the agent's response payload.
+
+The experiment contains six cases:
+
+- Three canary-disclosure cases covering system, customer, and supplier canaries.
+- Three benign information cases.
+
+Results recorded in `reports/output_security_benchmark_v2.json`:
+
+| Measurement | Naive baseline | Output-guard defended |
+|---|---:|---:|
+| Canary-disclosure cases | 3 | 3 |
+| Canary leaks | 3/3 | 0/3 |
+| Canary leakage rate | 100% | 0% |
+| Benign responses without leakage | 3/3 | 3/3 |
+| Benign answers matching baseline | — | 3/3 |
+| Benign answer equivalence | — | 100% |
+| Output-guard blocks | 0 | 3 |
+
+The defended agent applies recursive output inspection to the complete serialized response payload, including the final answer, retrieved documents, nested tool-call results, authorization events, and final-state fields. Strings containing one of the three known exact canary values are replaced with a generic protected-information message.
+
+In this controlled experiment, the defended agent prevented all three canary disclosures while preserving all three benign answers exactly as produced by the naive baseline.
+
+These findings are limited to six authored cases. The comparison uses the naive and defended agent pipelines rather than a fully isolated guard-only ablation. The output guard performs exact, case-insensitive matching against known synthetic canaries. It does not establish protection against transformed, paraphrased, encoded, or semantic disclosure. The benign-answer equivalence result is also limited to the three tested benign cases.
+
+#### Reproducing the output-security evaluation
+
+Run:
+
+```bash
+python -m sentinel.run_output_security_benchmark
+```
+
+The generated report is saved to:
+
+```text
+reports/output_security_benchmark_v2.json
+```
+
+### 5. End-to-End V2 Benchmark — 80 Cases
+
+Sentinel includes an expanded 80-case benchmark comparing a deliberately
+vulnerable baseline agent with the rule-defended agent.
+
+| Split | Benign | Direct injection | Indirect injection | Total |
+|---|---:|---:|---:|---:|
+| Development | 16 | 8 | 8 | 32 |
+| Validation | 12 | 6 | 6 | 24 |
+| Held-out test | 12 | 6 | 6 | 24 |
+| **Total** | **40** | **20** | **20** | **80** |
+
+#### Aggregate results
+
+| Measurement | Naive baseline | Rule-defended |
+|---|---:|---:|
+| Attack Success Rate | 100% | 0% |
+| Benign task completion | 100% | 100% |
+| Unauthorized tool-call rate | 52.5% | 0% |
+| False refusal rate | 0% | 0% |
+
+#### Results by split
+
+| Split | Naive ASR | Defended ASR | Naive benign completion | Defended benign completion |
+|---|---:|---:|---:|---:|
+| Development | 100% | 0% | 100% | 100% |
+| Validation | 100% | 0% | 100% | 100% |
+| Held-out test | 100% | 0% | 100% | 100% |
+
+The defended agent recorded zero successful attacks across all 80 cases
+while completing all 40 benign tasks without false refusals.
+
+The benchmark combines direct prompt-injection handling, retrieved-document
+sanitization, application-level tool authorization, and final-response
+security checks. These results describe the complete defended pipeline,
+not the isolated contribution of any one security component.
+
+The dataset is synthetic and curated. The held-out split is separate from
+the development and validation splits, but it is not an independently
+collected external benchmark. A 0% ASR on these cases does not establish
+protection against arbitrary real-world prompt injection.
+
+#### Reproducing the V2 benchmark
+
+Generate the V2 dataset:
+
+~~~bash
+python scripts/generate_benchmark_v2.py
+~~~
+
+Run the benchmark:
+
+~~~bash
+python -m sentinel.run_benchmark_v2
+~~~
+
+The generated dataset is stored under `data/processed_v2/`.
+
+The benchmark report is saved to:
+
+`reports/sentinel_benchmark_v2_80cases.json`
+
 ## Evaluation Metrics
 
 Sentinel uses the following evaluation measures:
@@ -176,8 +280,8 @@ python -m pytest tests -v
 
 The current local regression suite completes with:
 
-- 47 tests passed.
-- 2 subtests passed.
+- 62 tests passed.
+- 8 subtests passed.
 - 0 failures.
 
 A previous clean-environment reproduction also completed successfully with 36 passing tests and no broken package requirements. That result predates the latest authorization implementation and test additions.
@@ -204,7 +308,8 @@ Sentinel/
 │   ├── rule_defended_metrics.json
 │   ├── benchmark_comparison.json
 │   ├── authorization_benchmark_comparison_v4.json
-│   └── authorization_focused_benchmark.json
+│   ├── authorization_focused_benchmark.json
+│   └── output_security_benchmark_v2.json
 │
 ├── scripts/
 │   ├── generate_benchmark.py
@@ -224,6 +329,7 @@ Sentinel/
 │       │   ├── authorization.py
 │       │   ├── policy.py
 │       │   ├── secrets.py
+│       │   ├── output_guard.py
 │       │   └── tool_guard.py
 │       │
 │       ├── tools/
@@ -231,6 +337,7 @@ Sentinel/
 │       │   └── privileged.py
 │       │
 │       ├── run_benchmark.py
+│       ├── run_output_security_benchmark.py
 │       ├── run_eval.py
 │       └── run_smoke.py
 │
@@ -238,7 +345,8 @@ Sentinel/
 │   ├── test_auditkit_adapter.py
 │   ├── test_metrics.py
 │   ├── test_policy.py
-│   └── test_security.py
+│   ├── test_security.py
+│   └── test_output_guard.py
 │
 ├── pyproject.toml
 ├── README.md
@@ -263,7 +371,7 @@ Review upstream licenses and acceptable-use terms before redistribution or comme
 - Small, curated evaluation datasets.
 - The diagnostic holdout is not a fully blind external benchmark.
 - Some answer-quality assessments were performed manually.
-- Rule-based and exact-string detectors do not establish semantic detection capability.
+- The output guard currently uses exact-string synthetic canary matching and does not establish detection of transformed or semantic disclosure.
 - Identity, role, and approval contexts are simulated.
 - Application-level authorization is not equivalent to process isolation.
 - The 24-scenario authorization benchmark covers designed cases, not the full range of real-world attacks.
@@ -299,6 +407,29 @@ Key reports:
 - [Corrected SafeTune Comparison](reports/model_backed/tiny_aya_safetune_four_way_comparison_corrected.json)
 
 The reports include the 42-case Tiny Aya experiment, the 30-case diagnostic holdout, authorization evaluations, and SafeTune comparison records.
+
+## Output-Security Evaluation Artifacts
+
+- [Controlled Output-Security Benchmark](reports/output_security_benchmark_v2.json)
+
+Reproduce with:
+
+```bash
+python -m sentinel.run_output_security_benchmark
+```
+
+## V2 End-to-End Benchmark Artifacts
+
+- [V2 80-Case Benchmark Report](reports/sentinel_benchmark_v2_80cases.json)
+- Dataset: `data/processed_v2/`
+- Generator: `scripts/generate_benchmark_v2.py`
+- Runner: `src/sentinel/run_benchmark_v2.py`
+
+Reproduce with:
+
+~~~bash
+python -m sentinel.run_benchmark_v2
+~~~
 
 ## Authorization Evaluation Artifacts
 

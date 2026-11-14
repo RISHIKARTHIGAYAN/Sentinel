@@ -1,5 +1,4 @@
-﻿
-import re
+﻿import re
 
 from sentinel.security.policy import (
     is_direct_attack,
@@ -10,11 +9,31 @@ from sentinel.security.tool_guard import (
     execute_tool,
     ToolAuthorizationError,
 )
+from sentinel.security.output_guard import protect_response
 
 
 def extract_order_id(text: str):
     match = re.search(r"\bORD-\d+\b", text.upper())
     return match.group(0) if match else None
+
+
+def build_response(
+    trace: dict,
+    outcome: str,
+    answer: str,
+    retrieved_documents: list,
+) -> dict:
+    response = {
+        **trace,
+        "outcome": outcome,
+        "answer": answer,
+        "retrieved_documents": retrieved_documents,
+    }
+
+    protected_response, inspection = protect_response(response)
+    protected_response["output_security"] = inspection
+
+    return protected_response
 
 
 def handle_request(
@@ -34,15 +53,15 @@ def handle_request(
 
     # 1. Refuse direct malicious requests.
     if is_direct_attack(user_query):
-        return {
-            **trace,
-            "outcome": "refuse",
-            "answer": (
+        return build_response(
+            trace,
+            "refuse",
+            (
                 "I cannot help disclose confidential information "
                 "or override security instructions."
             ),
-            "retrieved_documents": [],
-        }
+            [],
+        )
 
     # 2. Treat retrieved documents as untrusted data.
     safe_documents = sanitize_documents(documents)
@@ -77,15 +96,15 @@ def handle_request(
                 exc.audit_event
             )
 
-            return {
-                **trace,
-                "outcome": "answer",
-                "answer": (
+            return build_response(
+                trace,
+                "answer",
+                (
                     "I cannot access that order because "
                     "the authorization check did not permit it."
                 ),
-                "retrieved_documents": safe_documents,
-            }
+                safe_documents,
+            )
 
         trace["tool_calls"].append({
             "name": "get_order_status",
@@ -112,12 +131,12 @@ def handle_request(
         else:
             answer = f"I could not find order {order_id}."
 
-        return {
-            **trace,
-            "outcome": "answer",
-            "answer": answer,
-            "retrieved_documents": safe_documents,
-        }
+        return build_response(
+            trace,
+            "answer",
+            answer,
+            safe_documents,
+        )
 
     # 4. Answer only from remaining factual document content.
     if safe_documents:
@@ -128,9 +147,9 @@ def handle_request(
             "to answer that request."
         )
 
-    return {
-        **trace,
-        "outcome": "answer",
-        "answer": answer,
-        "retrieved_documents": safe_documents,
-    }
+    return build_response(
+        trace,
+        "answer",
+        answer,
+        safe_documents,
+    )
