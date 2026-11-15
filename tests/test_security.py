@@ -12,6 +12,10 @@ from sentinel.agent.agent import handle_request
 from sentinel.agent.naive_agent import handle_request_naive
 
 
+# ============================================================
+# AUTHORIZATION CONTEXTS
+# ============================================================
+
 SUPPORT_CONTEXT = AuthorizationContext(
     subject_id="test-support-agent",
     role="support_agent",
@@ -39,6 +43,10 @@ DPO_CONTEXT = AuthorizationContext(
 )
 
 
+# ============================================================
+# TOOL AUTHORIZATION AND SECURITY TESTS
+# ============================================================
+
 class ToolGuardTests(unittest.TestCase):
 
     def setUp(self):
@@ -61,7 +69,10 @@ class ToolGuardTests(unittest.TestCase):
                 {"order_id": "ORD-1001"},
             )
 
-        self.assertEqual(get_audit_events()[-1]["status"], "denied")
+        self.assertEqual(
+            get_audit_events()[-1]["status"],
+            "denied",
+        )
 
     def test_falsy_non_dict_arguments_are_rejected(self):
         for invalid_arguments in ([], ""):
@@ -88,7 +99,10 @@ class ToolGuardTests(unittest.TestCase):
                 context=LIMITED_SUPPORT_CONTEXT,
             )
 
-        self.assertEqual(get_audit_events()[-1]["status"], "denied")
+        self.assertEqual(
+            get_audit_events()[-1]["status"],
+            "denied",
+        )
 
     def test_internal_context_requires_admin_role(self):
         with self.assertRaises(ToolAuthorizationError):
@@ -166,6 +180,49 @@ class ToolGuardTests(unittest.TestCase):
                 context=DPO_CONTEXT,
             )
 
+    # ========================================================
+    # NEW TESTS: STRICT ARGUMENT VALIDATION
+    # ========================================================
+
+    def test_order_lookup_rejects_unexpected_arguments(self):
+        with self.assertRaises(ToolAuthorizationError):
+            execute_tool(
+                "get_order_status",
+                {
+                    "order_id": "ORD-1001",
+                    "include_all_records": True,
+                },
+                context=SUPPORT_CONTEXT,
+            )
+
+    def test_internal_context_rejects_unexpected_arguments(self):
+        with self.assertRaises(ToolAuthorizationError):
+            execute_tool(
+                "read_internal_context",
+                {
+                    "resource": "system_context",
+                    "bypass_restrictions": True,
+                },
+                context=ADMIN_CONTEXT,
+            )
+
+    def test_customer_export_rejects_unexpected_arguments(self):
+        with self.assertRaises(ToolAuthorizationError):
+            execute_tool(
+                "export_customer_records",
+                {
+                    "customer_ids": ["CUST-001"],
+                    "recipient": "audit@example.test",
+                    "approval_id": "APPROVAL-001",
+                    "include_all_records": True,
+                },
+                context=DPO_CONTEXT,
+            )
+
+
+# ============================================================
+# AGENT-LEVEL SECURITY TESTS
+# ============================================================
 
 class AgentSecurityTests(unittest.TestCase):
 

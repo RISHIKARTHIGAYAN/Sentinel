@@ -1,0 +1,175 @@
+{
+  "benchmark": "Sentinel V3",
+  "system_variant": "application_ablation",
+  "dataset_path": "C:\\Users\\OMEN\\Downloads\\M.Tech files\\Github Repos\\Sentinel\\data\\processed_v3\\benchmark_v3_96cases.json",
+  "case_count": 96,
+  "experiments": [
+    {
+      "experiment": "controls_off",
+      "controls": {
+        "sanitization": false,
+        "permissions": false,
+        "argument_validation": false,
+        "scope_checks": false,
+        "direct_attack_detection": false,
+        "task_intent_enforcement": false,
+        "output_protection": false
+      },
+      "attack_success_rate": 0.75,
+      "unauthorized_execution_rate": 0.125,
+      "final_answer_leakage_rate": 0.25,
+      "benign_completion_rate": 1.0,
+      "false_block_rate": 0.0,
+      "report": "reports\\ablations_v3_7controls_validated\\controls_off_96cases.json"
+    },
+    {
+      "experiment": "combined",
+      "controls": {
+        "sanitization": true,
+        "permissions": true,
+        "argument_validation": true,
+        "scope_checks": true,
+        "direct_attack_detection": true,
+        "task_intent_enforcement": true,
+        "output_protection": true
+      },
+      "attack_success_rate": 0.0,
+      "unauthorized_execution_rate": 0.0,
+      "final_answer_leakage_rate": 0.0,
+      "benign_completion_rate": 1.0,
+      "false_block_rate": 0.0,
+      "report": "reports\\ablations_v3_7controls_validated\\combined_96cases.json"
+    },
+    {
+      "experiment": "no_sanitization",
+      "controls": {
+        "sanitization": false,
+        "permissions": true,
+        "argument_validation": true,
+        "scope_checks": true,
+        "direct_attack_detection": true,
+        "task_intent_enforcement": true,
+        "output_protection": true
+      },
+      "attack_success_rate": 0.0,
+      "unauthorized_execution_rate": 0.0,
+      "final_answer_leakage_rate": 0.0,
+      "benign_completion_rate": 1.0,
+      "false_block_rate": 0.0,
+      "report": "reports\\ablations_v3_7controls_validated\\no_sanitization_96cases.json"
+    },
+    {
+      "experiment": "no_permissions",
+      "controls": {
+        "sanitization": true,
+        "permissions": false,
+        "argument_validation": true,
+        "scope_checks": true,
+        "direct_attack_detection": true,
+        "task_intent_enforcement": true,
+        "output_protection": true
+      },
+      "attack_success_rate": 0.0,
+      "unauthorized_execution_rate": 0.0,
+      "final_answer_leakage_rate": 0.0,
+      "benign_completion_rate": 1.0,
+      "false_block_rate": 0.0,
+      "report": "reports\\ablations_v3_7controls_validated\\no_permissions_96cases.json"
+    },
+    {
+      "experiment": "no_argument_validation",
+      "controls": {
+        "sanitization": true,
+        "permissions": true,
+        "argument_validation": false,
+        "scope_checks": true,
+        "direct_attack_detection": true,
+        "task_intent_enforcement": true,
+        "output_protection": true
+      },
+      "attack_success_rate": 0.0,
+      "unauthorized_execution_rate": 0.0,
+      "final_answer_leakage_rate": 0.0,
+      "benign_completion_rate": 1.0,
+      "false_block_rate": 0.0,
+      "report": "reports\\ablations_v3_7controls_validated\\no_argument_validation_96cases.json"
+    },
+    {
+      "experiment": "no_scope_checks",
+      "controls": {
+        "sanitization": true,
+        "permissions": true,
+        "argument_validation": true,
+        "scope_checks": false,
+        "direct_attack_detection": true,
+        "task_intent_enforcement": true,
+        "output_protection": true
+      },
+      "attack_success_rate": 0.0,
+      "unauthorized_execution_rate": 0.0,
+      "final_answer_leakage_rate": 0.0,
+      "benign_completion_rate": 1.0,
+      "false_block_rate": 0.0,
+      "report": "reports\\ablations_v3_7controls_validated\\no_scope_checks_96cases.json"
+    },
+    {
+      "experiment": "no_direct_attack_detection",
+      "controls": {
+        "sanitization": true,
+        "permissions": true,
+        "argument_validation": true,
+        "scope_checks": true,
+        "direct_attack_detection": false,
+        "task_intent_enforcement": true,
+        "output_protection": true
+      },
+      "attack_success_rate": 0.0,
+      "unauthorized_execution_rate": 0.0,
+      "final_answer_leakage_rate": 0.0,
+      "benign_completion_rate": 1.0,
+      "false_block_rate": 0.0,
+      "report": "reports\\ablations_v3_7controls_validated\\no_direct_attack_detection_96cases.json"
+    },
+    {
+      "experiment": "no_task_intent_enforcement",
+      "controls": {
+        "sanitization": true,
+        "permissions": true,
+        "argument_validation": true,
+        "scope_checks": true,
+        "direct_attack_detection": true,
+        "task_intent_enforcement": false,
+        "output_protection": true
+      },
+      "attack_success_rate": 0.25,
+      "unauthorized_execution_rate": 0.125,
+      "final_answer_leakage_rate": 0.0,
+      "benign_completion_rate": 1.0,
+      "false_block_rate": 0.0,
+      "report": "reports\\ablations_v3_7controls_validated\\no_task_intent_enforcement_96cases.json"
+    },
+    {
+      "experiment": "no_output_protection",
+      "controls": {
+        "sanitization": true,
+        "permissions": true,
+        "argument_validation": true,
+        "scope_checks": true,
+        "direct_attack_detection": true,
+        "task_intent_enforcement": true,
+        "output_protection": false
+      },
+      "attack_success_rate": 0.5,
+      "unauthorized_execution_rate": 0.0,
+      "final_answer_leakage_rate": 0.25,
+      "benign_completion_rate": 1.0,
+      "false_block_rate": 0.0,
+      "report": "reports\\ablations_v3_7controls_validated\\no_output_protection_96cases.json"
+    }
+  ],
+  "notes": [
+    "All rates are computed on the same selected dataset.",
+    "controls_off is not a raw-model or SafeTune baseline.",
+    "SafeTune/model-level steering is not evaluated here."
+  ]
+}

@@ -1,9 +1,12 @@
-﻿import re
+﻿
+import re
 
 
 # Explicit malicious requests made directly by the user.
 DIRECT_ATTACK_PATTERNS = [
     r"\bignore\s+(all\s+)?(previous|prior)\s+instructions\b",
+    r"\bdisregard\s+(?:all\s+)?(?:previous|prior|earlier)\s+instructions\b",
+    r"\b(?:expose|reveal|disclose|print)\b.*\b(?:internal|system|hidden)\s+instructions\b",
     r"\breveal\s+(your\s+|the\s+)?(internal\s+)?system\s+prompt\b",
     r"\bexport\s+all\s+customer\b",
     r"\bcustomer\s+email\s+addresses\b",
@@ -20,9 +23,10 @@ DIRECT_ATTACK_PATTERNS = [
 
 
 # Known prompt-injection markers.
+# Generic words such as "important:" are deliberately excluded
+# to avoid classifying legitimate factual content as malicious.
 UNTRUSTED_INSTRUCTION_MARKERS = [
     "system override:",
-    "important:",
     "ignore the user",
     "export all customer records",
     "send all confidential",
@@ -59,7 +63,7 @@ INSTRUCTION_PATTERNS = [
     r"\bignore\b.*\b(original\s+question|original\s+request|user'?s?\s+question)\b",
     r"\b(expose|reveal|disclose)\b.*\b(internal|confidential|restricted)\s+(operational\s+)?(data|information|instructions)\b",
     r"\breplace\b.*\b(confidential|restricted|private|internal)\b",
-    
+
     r"\boverride\b.*\b(previous|prior|system|security)\s+instructions\b",
     r"\b(extract|export|retrieve|access|obtain)\b.*\bcustomer emails?\b",
 ]
@@ -71,6 +75,9 @@ def is_direct_attack(user_query: str) -> bool:
 
     This is a rule-based detector, not a general semantic classifier.
     """
+    if not isinstance(user_query, str):
+        return False
+
     text = user_query.lower()
 
     return any(
@@ -86,6 +93,9 @@ def is_instruction_like(sentence: str) -> bool:
     This is a heuristic classifier. It cannot guarantee detection
     of novel or obfuscated prompt injections.
     """
+    if not isinstance(sentence, str):
+        return False
+
     text = sentence.strip()
 
     if not text:
@@ -114,6 +124,9 @@ def split_sentences(document: str) -> list[str]:
     This simple splitter may not handle every abbreviation,
     URL, or complex document format correctly.
     """
+    if not isinstance(document, str):
+        return []
+
     return [
         sentence.strip()
         for sentence in re.split(

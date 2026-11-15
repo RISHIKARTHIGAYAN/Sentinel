@@ -4,16 +4,13 @@ from sentinel.tools.privileged import (
     read_internal_context,
     export_customer_records,
 )
+
 from sentinel.security.authorization import (
     AuthorizationContext,
+    AuthorizationControls,
+    ToolAuthorizationError,
     authorize_tool,
 )
-
-
-class ToolAuthorizationError(PermissionError):
-    def __init__(self, message: str, audit_event: dict):
-        super().__init__(message)
-        self.audit_event = audit_event
 
 
 TOOL_REGISTRY = {
@@ -22,11 +19,12 @@ TOOL_REGISTRY = {
     "export_customer_records": export_customer_records,
 }
 
+
 AUDIT_EVENTS: list[dict] = []
 
 
 def get_audit_events() -> list[dict]:
-    """Return a copy of the recorded tool audit events."""
+    """Return copies of recorded tool audit events."""
     return [event.copy() for event in AUDIT_EVENTS]
 
 
@@ -39,16 +37,22 @@ def execute_tool(
     tool_name: str,
     arguments: dict | None = None,
     context: AuthorizationContext | None = None,
+    controls: AuthorizationControls | None = None,
 ) -> dict:
     """
-    Authorize and execute a registered tool.
+    Authorize and execute a registered simulated tool.
 
-    Every invocation is audited. Missing authorization context
-    and unauthorized operations are denied by default.
+    Default behavior enforces all authorization controls.
+
+    Every invocation is audited. A valid trusted authorization context
+    and a registered tool are mandatory, including during ablation.
     """
 
     if arguments is None:
         arguments = {}
+
+    if controls is None:
+        controls = AuthorizationControls()
 
     event = {
         "tool": tool_name,
@@ -62,11 +66,19 @@ def execute_tool(
             if isinstance(context, AuthorizationContext)
             else None
         ),
-        "arguments": arguments.copy()
-        if isinstance(arguments, dict)
-        else None,
+        "arguments": (
+            arguments.copy()
+            if isinstance(arguments, dict)
+            else None
+        ),
+        "controls": {
+            "permissions": controls.permissions,
+            "argument_validation": controls.argument_validation,
+            "scope_checks": controls.scope_checks,
+        } if isinstance(controls, AuthorizationControls) else None,
     }
 
+    # Unknown tools are always rejected.
     if tool_name not in TOOL_REGISTRY:
         event["status"] = "denied"
         event["reason"] = "Unknown tool"
@@ -77,27 +89,40 @@ def execute_tool(
             event,
         )
 
-    denial_reason = authorize_tool(
-        context,
-        tool_name,
-        arguments,
-    )
-
-    if denial_reason is not None:
-        event["status"] = "denied"
-        event["reason"] = denial_reason
-        AUDIT_EVENTS.append(event)
-
-        raise ToolAuthorizationError(
-            denial_reason,
-            event,
+    # Authorization and validation must succeed before execution.
+    try:
+        authorize_tool(
+            tool_name=tool_name,
+            arguments=arguments,
+            context=context,
+            controls=controls,
         )
 
+    except ToolAuthorizationError as exc:
+        event["status"] = "denied"
+        event["reason"] = str(exc)
+
+        exc.audit_event = event
+        AUDIT_EVENTS.append(event)
+        raise
+
+    except Exception as exc:
+        # Record unexpected failures inside the authorization layer
+        # separately from ordinary authorization denials.
+        event["status"] = "authorization_error"
+        event["reason"] = type(exc).__name__
+
+        AUDIT_EVENTS.append(event)
+        raise
+
+    # Execute only after the configured checks have passed.
     try:
         result = TOOL_REGISTRY[tool_name](**arguments)
+
     except Exception as exc:
         event["status"] = "execution_error"
         event["reason"] = type(exc).__name__
+
         AUDIT_EVENTS.append(event)
         raise
 

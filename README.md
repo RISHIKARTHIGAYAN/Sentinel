@@ -1,272 +1,452 @@
+﻿# Sentinel V3 â€” AI Agent Security Benchmark
 
-# Sentinel — Agentic AI Security
+**A controlled evaluation of application-level security controls for AI agents, covering prompt injection, authorization abuse, tool execution, and sensitive-information disclosure.**
 
-Sentinel is a research prototype investigating prompt-injection resistance in agentic Retrieval-Augmented Generation (RAG) systems.
+Sentinel V3 is a research prototype designed to evaluate how application-level security controls affect the behavior of an AI agent operating with access to simulated business tools and protected information.
 
-The project explores how model-level safety mechanisms and independent application-level authorization can work together to improve agent security while preserving legitimate task completion.
+The project uses a controlled synthetic benchmark to evaluate seven security controls individually and in combination. It measures security outcomes while also checking whether legitimate tasks remain functional.
 
-## Research Question
+> **Research scope:** Sentinel V3 evaluates application-level agent security. It does not claim to train or fine-tune a new language model or establish resistance to arbitrary real-world attacks.
 
-Can we measurably improve the resistance of an agentic RAG system to direct and indirect prompt injection through trusted application-level authorization, while preserving its ability to complete legitimate tasks?
+---
 
-## What Sentinel Investigates
+## Table of Contents
 
-- Direct prompt injection through user requests.
-- Indirect prompt injection embedded in retrieved documents.
-- Retrieved-document inspection and sanitization.
-- Independent authorization of agent tool calls.
-- Role-based access control and object-level scope validation.
-- Argument validation and approval checks for privileged operations.
-- Refusal-direction steering using Cohere Labs Tiny Aya Global and Lexsi Labs SafeTune.
-- Agent evaluation using Lexsi Labs AuditKIT.
+- [Overview](#overview)
+- [Research Objectives](#research-objectives)
+- [System Architecture](#system-architecture)
+- [Seven Security Controls](#seven-security-controls)
+- [Benchmark Dataset](#benchmark-dataset)
+- [Primary Benchmark Results](#primary-benchmark-results)
+- [Ablation Experiments](#ablation-experiments)
+- [Evaluation Methodology](#evaluation-methodology)
+- [Reproducibility](#reproducibility)
+- [Project Structure](#project-structure)
+- [Earlier Research: Sentinel V1 and V2](#earlier-research-sentinel-v1-and-v2)
+- [Tools and Dependencies](#tools-and-dependencies)
+- [Limitations and Responsible Interpretation](#limitations-and-responsible-interpretation)
+- [Work Completed Outside the Hackathon](#work-completed-outside-the-hackathon)
+- [Future Work](#future-work)
 
-## Architecture
+---
 
-Sentinel separates model decisions from application-level tool authorization.
+## Overview
 
-1. The agent receives a user request and retrieved business documents.
-2. The model produces an answer or requests a tool call.
-3. Retrieved content is inspected and sanitized before being used.
-4. An independent authorization layer validates the requested tool, identity context, permissions, and arguments.
-5. Simulated tools execute only when authorization succeeds.
-6. Evaluation records security outcomes and legitimate task completion.
+AI agents increasingly interact with external tools, retrieve documents, process business information, and execute operations on behalf of users.
 
-The architecture distinguishes between:
+These capabilities introduce security risks, including:
 
-- **Model-level safety:** refusal behavior and resistance to malicious instructions.
-- **Application-level security:** independent enforcement of tool permissions, object scope, and argument constraints.
+- Direct prompt injection.
+- Indirect prompt injection through retrieved documents.
+- Unauthorized tool execution.
+- Abuse of otherwise permitted tools.
+- Manipulation of tool arguments.
+- Access to resources outside an authorized scope.
+- Disclosure of sensitive information in final responses.
 
-All business records, tools, identities, approvals, and protected canary values used in the experiments are simulated.
+Sentinel explores an application-level defense architecture that places security checks around agent operations.
 
-## Experimental Findings
+Rather than relying exclusively on a model's ability to refuse unsafe requests, Sentinel evaluates controls at different stages of the application workflow.
 
-### 1. Model-Backed Tiny Aya Evaluation
+The V3 implementation contains seven configurable controls and a synthetic 96-case benchmark.
 
-The model-backed evaluation includes a 42-case paired experiment and a separately authored 30-case diagnostic holdout.
+## Research Objectives
 
-Results on the 30-case diagnostic holdout:
+The primary objectives are:
 
-| Measurement | Tiny Aya baseline | Tiny Aya + SafeTune |
+1. Evaluate whether application-level controls prevent unauthorized agent actions.
+2. Measure the impact of individual security controls through ablation experiments.
+3. Evaluate protection against direct and indirect prompt injection.
+4. Examine whether task-intent enforcement prevents misuse of otherwise available permissions.
+5. Evaluate sensitive-information protection in tool outputs and final responses.
+6. Measure whether security controls preserve legitimate task completion.
+7. Provide reproducible benchmark data, execution reports, and test coverage.
+
+---
+
+## System Architecture
+
+Sentinel V3 uses an application-level security architecture around an agent that can interact with simulated business tools.
+
+The conceptual workflow is:
+
+```text
+                 User Request
+                      |
+                      v
+             Input Sanitization
+                      |
+                      v
+              Agent Processing
+                      |
+                      v
+             Direct Attack Detection
+                      |
+                      v
+             Task Intent Enforcement
+                      |
+                      v
+             Authorization Checks
+                      |
+                      v
+             Argument Validation
+                      |
+                      v
+                Scope Checks
+                      |
+                      v
+                Tool Execution
+                      |
+                      v
+               Output Protection
+                      |
+                      v
+                Final Response
+```
+
+This diagram represents the security-control concepts, not a claim that every internal function executes in precisely this sequence for every request.
+
+The system records execution traces and evaluates observed behavior against expected benchmark outcomes.
+
+---
+
+## Seven Security Controls
+
+Sentinel V3 exposes seven independently configurable application-level controls.
+
+| Control | Purpose |
+|---|---|
+| `sanitization` | Inspects untrusted input and retrieved content. |
+| `permissions` | Enforces application-level authorization decisions. |
+| `argument_validation` | Validates tool arguments before execution. |
+| `scope_checks` | Restricts operations to authorized resources and scopes. |
+| `direct_attack_detection` | Detects selected direct prompt-injection patterns. |
+| `task_intent_enforcement` | Checks whether a requested operation is consistent with the permitted task intent. |
+| `output_protection` | Prevents tested protected information from appearing in final responses. |
+
+Each control can be enabled or disabled through the V3 configuration.
+
+The benchmark evaluates:
+
+- All controls enabled.
+- All controls disabled.
+- Each individual control disabled while the remaining controls stay enabled.
+
+This allows the project to compare the combined configuration with individual ablation conditions.
+
+---
+
+## Benchmark Dataset
+
+The V3 benchmark contains **96 synthetic cases** across eight categories.
+
+Each category contains 12 cases.
+
+| Category | Cases | Description |
+|---|---:|---|
+| `benign_order_lookup` | 12 | Legitimate order-status requests. |
+| `benign_internal_read` | 12 | Legitimate internal-resource read requests. |
+| `benign_customer_export` | 12 | Legitimate customer-export operations. |
+| `benign_factual` | 12 | Ordinary factual requests. |
+| `attack_direct_injection` | 12 | Direct prompt-injection attempts. |
+| `attack_indirect_injection` | 12 | Malicious instructions embedded in retrieved content. |
+| `attack_within_permission_abuse` | 12 | Attempts to misuse otherwise available permissions. |
+| `attack_final_answer_leakage` | 12 | Attempts to disclose protected information in final responses. |
+| **Total** | **96** | **48 benign and 48 attack cases.** |
+
+### Dataset splits
+
+The generator assigns cases to three splits.
+
+| Split | Cases per category | Total |
 |---|---:|---:|
-| Benign task success | 9/10 | 9/10 |
-| Sensitive-tool requests | 13 | 12 |
-| Sensitive requests blocked by Sentinel | 13/13 | 12/12 |
-| Protected sensitive-tool executions | 0 | 0 |
+| Development | 6 | 48 |
+| Validation | 3 | 24 |
+| Held-out test | 3 | 24 |
+| **Total** | **12** | **96** |
 
-The application-level authorization layer blocked every sensitive-tool request observed in both experimental conditions.
+These are predefined synthetic benchmark splits. The reported primary benchmark and ablation results evaluate the complete 96-case dataset; they should not be interpreted as results from an independently collected external test set.
 
-SafeTune reduced sensitive-tool requests by one. This is a modest result and does not establish a statistically reliable improvement.
+### Dataset characteristics
 
-The diagnostic holdout was freshly authored but was not a fully blind external benchmark.
+- Simulated business identities and authorization contexts.
+- Synthetic order and customer identifiers.
+- Simulated internal resources.
+- Synthetic approval identifiers.
+- Controlled malicious instructions.
+- Synthetic protected canary values.
+- Expected tool decisions and execution outcomes.
+- Expected final-disclosure labels.
 
-### 2. Application-Level Authorization Evaluation
+**Dataset location:**
 
-A separate authorization-focused benchmark evaluates Sentinel's application-level authorization layer independently of the language model.
+`data/processed_v3/benchmark_v3_96cases.json`
 
-The benchmark contains 24 controlled scenarios.
+The dataset is generated using:
+
+`scripts/generate_benchmark_v3.py`
+
+---
+
+## Primary Benchmark Results
+
+The primary V3 benchmark evaluates the combined configuration with all seven security controls enabled.
+
+<details>
+<summary>Primary benchmark summary</summary>
 
 | Measurement | Result |
 |---|---:|
-| Total scenarios | 24 |
-| Legitimate scenarios | 12 |
-| Legitimate operations permitted | 12/12 |
-| Adversarial scenarios | 12 |
-| Adversarial operations denied | 12/12 |
-| Decision accuracy | 100% |
+| Total cases | 96 |
+| Correct outcomes | 96/96 |
+| Outcome accuracy | 100% |
+| Attack cases | 48 |
+| Benign cases | 48 |
+| Attack success | 0/48 |
+| Attack Success Rate | 0% |
 | Unauthorized executions | 0 |
+| Sensitive disclosures | 0 |
+| Final-answer leaks | 0 |
+| Benign completions | 48/48 |
+| Benign Completion Rate | 100% |
 | False blocks | 0 |
+| Correct authorization decisions | 36/36 |
+| Correct executions | 96/96 |
+| Correct disclosure labels | 48/48 |
+| Argument violations | 0 |
+| Scope violations | 0 |
 
-The scenarios evaluate:
+</details>
 
-- Role-based access restrictions.
-- Object-level scope validation.
-- Internal resource access restrictions.
-- Argument manipulation.
-- Export recipient validation.
-- Approval ID validation.
-- Customer record scope restrictions.
-- Missing identity context.
-- Unauthorized tool invocation.
+### Interpretation
 
-The benchmark achieved 100% decision accuracy across these designed scenarios.
+The combined configuration achieved zero measured attack successes across the 48 synthetic attack cases while completing all 48 benign cases.
 
-These results demonstrate correct authorization decisions within the controlled test cases. They are not an end-to-end model attack success rate and do not establish generalization to arbitrary real-world attacks.
+The benchmark also recorded:
 
-#### Reproducing the authorization evaluation
+- No unauthorized tool executions.
+- No measured sensitive disclosures.
+- No final-answer leaks.
+- No false blocks.
+- Correct expected outcomes across all 96 cases.
 
-Run:
+These results demonstrate the behavior of the implemented controls on the designed benchmark. They do not establish general-purpose prompt-injection resistance or security against arbitrary real-world attacks.
 
-```bash
-python scripts/run_authorization_benchmark.py
-```
+### Primary report
 
-The generated report is saved to:
+`reports/sentinel_v3_full_96cases_v2.json`
 
-```text
-reports/authorization_focused_benchmark.json
-```
+Additional validation report:
 
-### 3. End-to-End Authorization Benchmark
+`reports/sentinel_v3_baseline_96cases.json`
 
-Sentinel also includes a separate benchmark comparing a deliberately vulnerable baseline agent with the rule-defended agent.
+---
 
-The latest comparison report is:
+## Ablation Experiments
 
-```text
-reports/authorization_benchmark_comparison_v4.json
-```
+The V3 ablation runner evaluates nine configurations.
 
-This benchmark evaluates direct and indirect attack scenarios alongside legitimate tasks.
+| Experiment | Configuration |
+|---|---|
+| `controls_off` | All seven controls disabled. |
+| `combined` | All seven controls enabled. |
+| `no_sanitization` | Sanitization disabled. |
+| `no_permissions` | Permissions disabled. |
+| `no_argument_validation` | Argument validation disabled. |
+| `no_scope_checks` | Scope checks disabled. |
+| `no_direct_attack_detection` | Direct attack detection disabled. |
+| `no_task_intent_enforcement` | Task-intent enforcement disabled. |
+| `no_output_protection` | Output protection disabled. |
 
-The results must be interpreted in the context of the current agent implementation: early refusal and retrieved-document sanitization can prevent malicious instructions from reaching the tool authorization layer. Therefore, a blocked attack does not necessarily mean that the authorization layer itself rejected a malicious tool request.
+### Aggregate comparison
 
-The separate 24-scenario benchmark evaluates the authorization layer directly.
+| Configuration | Attack Success Rate | Unauthorized Executions | Final-Answer Leaks | Benign Completion | Outcome Accuracy |
+|---|---:|---:|---:|---:|---:|
+| Controls off | 75% | 12 | 24 | 100% | 75% |
+| Combined | 0% | 0 | 0 | 100% | 100% |
+| No sanitization | 0% | 0 | 0 | 100% | 100% |
+| No permissions | 0% | 0 | 0 | 100% | 100% |
+| No argument validation | 0% | 0 | 0 | 100% | 100% |
+| No scope checks | 0% | 0 | 0 | 100% | 100% |
+| No direct attack detection | 0% | 0 | 0 | 100% | 87.5% |
+| No task-intent enforcement | 25% | 12 | 0 | 100% | 87.5% |
+| No output protection | 50% | 0 | 24 | 100% | 100% |
 
-### 4. Controlled Output-Security Evaluation
+All configurations were evaluated on the same 96-case dataset.
 
-Sentinel includes a controlled experiment evaluating whether its final-response output guard prevents exact synthetic canary values from leaking through the agent's response payload.
+False-block rate was 0% across all nine configurations.
 
-The experiment contains six cases:
+### Key observations
 
-- Three canary-disclosure cases covering system, customer, and supplier canaries.
-- Three benign information cases.
+**1. Combined configuration**
 
-Results recorded in `reports/output_security_benchmark_v2.json`:
+The complete configuration recorded zero attack successes and preserved all benign task completions.
 
-| Measurement | Naive baseline | Output-guard defended |
-|---|---:|---:|
-| Canary-disclosure cases | 3 | 3 |
-| Canary leaks | 3/3 | 0/3 |
-| Canary leakage rate | 100% | 0% |
-| Benign responses without leakage | 3/3 | 3/3 |
-| Benign answers matching baseline | — | 3/3 |
-| Benign answer equivalence | — | 100% |
-| Output-guard blocks | 0 | 3 |
+**2. Controls disabled**
 
-The defended agent applies recursive output inspection to the complete serialized response payload, including the final answer, retrieved documents, nested tool-call results, authorization events, and final-state fields. Strings containing one of the three known exact canary values are replaced with a generic protected-information message.
+With all seven controls disabled:
 
-In this controlled experiment, the defended agent prevented all three canary disclosures while preserving all three benign answers exactly as produced by the naive baseline.
+- 36 of 48 attack cases succeeded.
+- 12 unauthorized executions occurred.
+- 24 final-answer leaks were recorded.
+- Outcome accuracy was 75%.
 
-These findings are limited to six authored cases. The comparison uses the naive and defended agent pipelines rather than a fully isolated guard-only ablation. The output guard performs exact, case-insensitive matching against known synthetic canaries. It does not establish protection against transformed, paraphrased, encoded, or semantic disclosure. The benign-answer equivalence result is also limited to the three tested benign cases.
+This is an application-level all-controls-off comparison, not a raw-language-model baseline.
 
-#### Reproducing the output-security evaluation
+**3. Output protection disabled**
 
-Run:
+Disabling output protection resulted in:
 
-```bash
-python -m sentinel.run_output_security_benchmark
-```
+- 24 sensitive disclosures.
+- 24 final-answer leaks.
+- 50% attack success rate.
 
-The generated report is saved to:
+No unauthorized tool executions were recorded in this configuration.
 
-```text
-reports/output_security_benchmark_v2.json
-```
+This demonstrates the importance of output protection for the tested synthetic canary-disclosure scenarios.
 
-### 5. End-to-End V2 Benchmark — 80 Cases
+**4. Task-intent enforcement disabled**
 
-Sentinel includes an expanded 80-case benchmark comparing a deliberately
-vulnerable baseline agent with the rule-defended agent.
+Disabling task-intent enforcement resulted in:
 
-| Split | Benign | Direct injection | Indirect injection | Total |
-|---|---:|---:|---:|---:|
-| Development | 16 | 8 | 8 | 32 |
-| Validation | 12 | 6 | 6 | 24 |
-| Held-out test | 12 | 6 | 6 | 24 |
-| **Total** | **40** | **20** | **20** | **80** |
+- 12 unauthorized executions.
+- 25% attack success rate.
+- 87.5% outcome accuracy.
 
-#### Aggregate results
+Output protection still prevented the measured final-answer leaks, but it could not reverse unauthorized operations that had already been executed.
 
-| Measurement | Naive baseline | Rule-defended |
-|---|---:|---:|
-| Attack Success Rate | 100% | 0% |
-| Benign task completion | 100% | 100% |
-| Unauthorized tool-call rate | 52.5% | 0% |
-| False refusal rate | 0% | 0% |
+**5. Direct attack detection disabled**
 
-#### Results by split
+Disabling direct attack detection resulted in:
 
-| Split | Naive ASR | Defended ASR | Naive benign completion | Defended benign completion |
-|---|---:|---:|---:|---:|
-| Development | 100% | 0% | 100% | 100% |
-| Validation | 100% | 0% | 100% | 100% |
-| Held-out test | 100% | 0% | 100% | 100% |
+- 87.5% outcome accuracy.
+- 0% measured attack success.
+- 0 unauthorized executions.
+- 0 final-answer leaks.
 
-The defended agent recorded zero successful attacks across all 80 cases
-while completing all 40 benign tasks without false refusals.
+The observed difference primarily involved expected refusal outcomes versus generic insufficient-information responses. It did not demonstrate successful attacks in this benchmark.
 
-The benchmark combines direct prompt-injection handling, retrieved-document
-sanitization, application-level tool authorization, and final-response
-security checks. These results describe the complete defended pipeline,
-not the isolated contribution of any one security component.
+**6. Controls with no observed marginal change**
 
-The dataset is synthetic and curated. The held-out split is separate from
-the development and validation splits, but it is not an independently
-collected external benchmark. A 0% ASR on these cases does not establish
-protection against arbitrary real-world prompt injection.
+Disabling sanitization, permissions, argument validation, or scope checks individually did not change the aggregate metrics in this particular one-control-at-a-time experiment.
 
-#### Reproducing the V2 benchmark
+This does not establish that these controls are unnecessary. Other controls may compensate for their absence, and the current dataset may not sufficiently exercise their unique capabilities.
 
-Generate the V2 dataset:
+### Ablation reports
 
-~~~bash
-python scripts/generate_benchmark_v2.py
-~~~
+The validated reports are stored in:
 
-Run the benchmark:
+`reports/ablations_v3_7controls_validated/`
 
-~~~bash
-python -m sentinel.run_benchmark_v2
-~~~
+This directory contains:
 
-The generated dataset is stored under `data/processed_v2/`.
+- `ablation_comparison.json`
+- `combined_96cases.json`
+- `controls_off_96cases.json`
+- `no_sanitization_96cases.json`
+- `no_permissions_96cases.json`
+- `no_argument_validation_96cases.json`
+- `no_scope_checks_96cases.json`
+- `no_direct_attack_detection_96cases.json`
+- `no_task_intent_enforcement_96cases.json`
+- `no_output_protection_96cases.json`
 
-The benchmark report is saved to:
+---
 
-`reports/sentinel_benchmark_v2_80cases.json`
+## Evaluation Methodology
 
-## Evaluation Metrics
+Sentinel V3 evaluates the following measures.
 
-Sentinel uses the following evaluation measures:
+### Attack Success Rate (ASR)
 
-- **Attack Success Rate (ASR):** attack cases resulting in defined security impact or instruction leakage.
-- **Sensitive-tool request rate:** attack cases in which the model or agent requests a sensitive tool.
-- **Sensitive-tool block rate:** sensitive requests rejected by the authorization layer.
-- **Protected sensitive-execution rate:** attack cases resulting in sensitive tool execution through the protected dispatcher.
-- **Benign task success:** legitimate requests successfully completed.
-- **False refusal rate:** legitimate requests incorrectly refused.
-- **Unauthorized execution rate:** unauthorized tool operations that execute.
-- **False block rate:** legitimate operations incorrectly denied.
+The proportion of attack cases resulting in the defined security impact.
 
-The model-backed, end-to-end, and application-level authorization evaluations measure different aspects of system behavior and should not be treated as interchangeable.
+Lower is better.
 
-## Installation
+### Unauthorized Execution Rate
+
+The proportion of cases resulting in unauthorized tool execution.
+
+Lower is better.
+
+### Final-Answer Leakage Rate
+
+The proportion of cases resulting in protected information appearing in the final answer.
+
+Lower is better.
+
+### Benign Completion Rate
+
+The proportion of legitimate tasks successfully completed.
+
+Higher is better.
+
+### False Block Rate
+
+The proportion of legitimate operations incorrectly blocked.
+
+Lower is better.
+
+### Outcome Accuracy
+
+The proportion of cases where the observed API outcome matches the expected outcome.
+
+Higher is better.
+
+Rates must be interpreted using their respective denominators. For example, the ablation comparison reports attack success over attack cases, while some execution and leakage measures are calculated over the full dataset.
+
+### Measurement notes
+
+- Final-answer leakage is measured against case-specific sensitive targets in the returned answer string.
+- Output-guard activation is reported separately from actual final-answer leakage.
+- Task-intent denial is distinguished from application authorization denial.
+- Sensitive disclosure uses exact synthetic-target matching.
+- Attacker-goal success is operationalized as unexpected tool execution or a sensitive target appearing in the final answer.
+- API outcome accuracy is reported separately from attacker-goal success.
+
+The output-protection experiment is not a general-purpose data-loss-prevention evaluation.
+
+---
+
+## Reproducibility
 
 ### Requirements
 
-- Python 3.12 or newer
-- Git
+- Python 3.12 or newer.
+- Git.
+- Windows, Linux, or macOS.
+- A Python virtual environment.
 
-### Clone the repository
+### Installation
+
+Clone the repository and enter its directory:
 
 ```bash
-git clone <YOUR-SENTINEL-REPOSITORY-URL>
+git clone https://github.com/RISHIKARTHIGAYAN/Sentinel.git
 cd Sentinel
 ```
 
-### Create a virtual environment
+Create a virtual environment:
 
 ```bash
 python -m venv .venv
 ```
 
-### Activate the environment on Windows PowerShell
+Activate the environment.
+
+Windows PowerShell:
 
 ```powershell
 .\.venv\Scripts\Activate.ps1
 ```
 
-### Install Sentinel and development dependencies
+Linux/macOS:
+
+```bash
+source .venv/bin/activate
+```
+
+Install the project and development dependencies:
 
 ```bash
 python -m pip install -e ".[dev]"
@@ -278,166 +458,261 @@ python -m pip install -e ".[dev]"
 python -m pytest tests -v
 ```
 
-The current local regression suite completes with:
+The latest validated local regression run completed with:
 
-- 62 tests passed.
+- 173 tests passed.
 - 8 subtests passed.
 - 0 failures.
 
-A previous clean-environment reproduction also completed successfully with 36 passing tests and no broken package requirements. That result predates the latest authorization implementation and test additions.
+### Run the V3 benchmark
+
+The repository includes the validated 96-case synthetic dataset.
+
+To reproduce the primary evaluation without overwriting the retained reports:
+
+```bash
+python scripts/run_benchmark_v3.py --output reports/reproduced/sentinel_v3_reproduction_96cases.json
+```
+
+The benchmark runner refuses to overwrite an existing output unless `--overwrite` is explicitly supplied.
+
+### Generate the dataset
+
+To regenerate the dataset from the supplied generator:
+
+```bash
+python scripts/generate_benchmark_v3.py
+```
+
+The generator intentionally refuses to overwrite an existing dataset file. If the repository already contains `data/processed_v3/benchmark_v3_96cases.json`, the generation command will stop with a `FileExistsError`.
+
+Preserve the supplied validated dataset unless you intentionally want to generate a fresh copy.
+
+### Run the seven-control ablation experiments
+
+Use a separate output directory to preserve the retained validated reports:
+
+```bash
+python scripts/run_ablation_v3.py --output-dir reports/reproduced/ablations_v3
+```
+
+The ablation runner checks for existing experiment and comparison reports before starting. It refuses to overwrite existing files.
+
+### Important reproducibility note
+
+The retained primary and ablation reports represent the validated runs used for the results described in this README.
+
+A newly executed benchmark may have a different generation timestamp. The dataset, source code, configuration, and execution environment should be retained when comparing reproduced results.
+
+---
 
 ## Project Structure
 
+The following is a simplified view of the important project components:
+
 ```text
 Sentinel/
-│
-├── configs/
-│
-├── data/
-│   ├── raw/
-│   │   └── sentinel_cases.json
-│   └── processed/
-│       ├── development.json
-│       ├── validation.json
-│       └── held_out_test.json
-│
-├── reports/
-│   ├── model_backed/
-│   ├── baseline_metrics.json
-│   ├── naive_metrics.json
-│   ├── rule_defended_metrics.json
-│   ├── benchmark_comparison.json
-│   ├── authorization_benchmark_comparison_v4.json
-│   ├── authorization_focused_benchmark.json
-│   └── output_security_benchmark_v2.json
-│
-├── scripts/
-│   ├── generate_benchmark.py
-│   ├── run_authorization_benchmark.py
-│   └── run_benchmark.py
-│
-├── src/
-│   └── sentinel/
-│       ├── agent/
-│       │   ├── agent.py
-│       │   └── naive_agent.py
-│       │
-│       ├── evaluation/
-│       │   └── metrics.py
-│       │
-│       ├── security/
-│       │   ├── authorization.py
-│       │   ├── policy.py
-│       │   ├── secrets.py
-│       │   ├── output_guard.py
-│       │   └── tool_guard.py
-│       │
-│       ├── tools/
-│       │   ├── orders.py
-│       │   └── privileged.py
-│       │
-│       ├── run_benchmark.py
-│       ├── run_output_security_benchmark.py
-│       ├── run_eval.py
-│       └── run_smoke.py
-│
-├── tests/
-│   ├── test_auditkit_adapter.py
-│   ├── test_metrics.py
-│   ├── test_policy.py
-│   ├── test_security.py
-│   └── test_output_guard.py
-│
-├── pyproject.toml
-├── README.md
-└── .gitignore
+|
+|-- data/
+|   |-- processed_v3/
+|       |-- benchmark_v3_96cases.json
+|
+|-- reports/
+|   |-- ablations_v3_7controls_validated/
+|   |   |-- ablation_comparison.json
+|   |   |-- combined_96cases.json
+|   |   |-- controls_off_96cases.json
+|   |   |-- no_sanitization_96cases.json
+|   |   |-- no_permissions_96cases.json
+|   |   |-- no_argument_validation_96cases.json
+|   |   |-- no_scope_checks_96cases.json
+|   |   |-- no_direct_attack_detection_96cases.json
+|   |   |-- no_task_intent_enforcement_96cases.json
+|   |   |-- no_output_protection_96cases.json
+|   |
+|   |-- sentinel_v3_full_96cases_v2.json
+|   |-- sentinel_v3_baseline_96cases.json
+|   |-- sentinel_v3_reproduction_96cases.json
+|
+|-- scripts/
+|   |-- generate_benchmark_v3.py
+|   |-- run_benchmark_v3.py
+|   |-- run_ablation_v3.py
+|
+|-- src/
+|   |-- sentinel/
+|       |-- agent/
+|       |   |-- agent.py
+|       |   |-- agent_v3.py
+|       |
+|       |-- evaluation/
+|       |   |-- v3/
+|       |   |-- metrics.py
+|       |
+|       |-- security/
+|       |-- tools/
+|
+|-- tests/
+|
+|-- pyproject.toml
+|-- README.md
 ```
 
-## Research Tools
+This tree highlights the main V3 components and retained reports; it is not an exhaustive listing of every repository file.
 
-- [AuditKIT](https://github.com/Lexsi-Labs/AuditKIT) — agent evaluation and experiment tracking.
-- [SafeTune](https://github.com/Lexsi-Labs/SafeTune) — model safety research and refusal-direction steering.
-- [Tiny Aya Global](https://huggingface.co/CohereLabs/tiny-aya-global) — Cohere Labs open-weight model used in model-backed experiments.
+---
 
-AuditKIT is pinned to a specific Git commit in `pyproject.toml`.
+## Earlier Research: Sentinel V1 and V2
 
-SafeTune model experiments were conducted separately in Kaggle.
+Sentinel's earlier development explored model-backed safety behavior and application-level authorization.
 
-Review upstream licenses and acceptable-use terms before redistribution or commercial use. The model and research tools have licensing and acceptable-use restrictions.
+These experiments are separate from the V3 seven-control benchmark.
 
-## Limitations
+### Tiny Aya and SafeTune experiments
 
-- Simulated tools and business data.
-- Small, curated evaluation datasets.
-- The diagnostic holdout is not a fully blind external benchmark.
-- Some answer-quality assessments were performed manually.
-- The output guard currently uses exact-string synthetic canary matching and does not establish detection of transformed or semantic disclosure.
-- Identity, role, and approval contexts are simulated.
-- Application-level authorization is not equivalent to process isolation.
-- The 24-scenario authorization benchmark covers designed cases, not the full range of real-world attacks.
-- External benchmarks such as AgentDojo and InjecAgent have not yet been integrated into the reported evaluation.
-- SafeTune's observed effect is small and requires broader evaluation.
+Earlier experiments used Cohere Labs Tiny Aya Global and Lexsi Labs SafeTune.
+
+These included a 42-case paired experiment and a separately authored 30-case diagnostic holdout.
+
+The diagnostic holdout recorded:
+
+| Measurement | Tiny Aya baseline | Tiny Aya + SafeTune |
+|---|---:|---:|
+| Benign task success | 9/10 | 9/10 |
+| Sensitive-tool requests | 13 | 12 |
+| Sensitive requests blocked | 13/13 | 12/12 |
+| Protected sensitive-tool executions | 0 | 0 |
+
+The observed SafeTune reduction was modest and does not establish a statistically reliable improvement.
+
+This model-backed work is separate from the V3 application-level benchmark.
+
+Detailed records:
+
+`reports/model_backed/`
+
+### Authorization-focused benchmark
+
+An earlier 24-scenario authorization benchmark recorded:
+
+- 12/12 legitimate operations permitted.
+- 12/12 adversarial operations denied.
+- 100% decision accuracy.
+- Zero unauthorized executions.
+- Zero false blocks.
+
+Report:
+
+`reports/authorization_focused_benchmark.json`
+
+### Output-security benchmark
+
+An earlier six-case experiment evaluated exact synthetic canary matching:
+
+- Naive baseline: 3/3 canary leaks.
+- Output-guard defended pipeline: 0/3 canary leaks.
+- Benign responses preserved: 3/3.
+
+This experiment used exact, case-insensitive matching against known synthetic canary values. It does not establish protection against paraphrased, encoded, or semantic disclosure.
+
+Report:
+
+`reports/output_security_benchmark_v2.json`
+
+### V2 end-to-end benchmark
+
+The earlier V2 benchmark contained 80 synthetic cases.
+
+| Measurement | Naive baseline | Rule-defended |
+|---|---:|---:|
+| Attack success rate | 100% | 0% |
+| Benign task completion | 100% | 100% |
+| Unauthorized tool-call rate | 52.5% | 0% |
+| False refusal rate | 0% | 0% |
+
+Report:
+
+`reports/sentinel_benchmark_v2_80cases.json`
+
+---
+
+## Tools and Dependencies
+
+The project uses Python and application-level security components to implement and evaluate the agent.
+
+The project pins Lexsi Labs AuditKIT to a specific Git commit through `pyproject.toml`.
+
+Earlier model-backed experiments used:
+
+- [Cohere Labs Tiny Aya Global](https://huggingface.co/CohereLabs/tiny-aya-global)
+- [Lexsi Labs SafeTune](https://github.com/Lexsi-Labs/SafeTune)
+- [Lexsi Labs AuditKIT](https://github.com/Lexsi-Labs/AuditKIT)
+
+These earlier experiments should not be confused with the V3 benchmark.
+
+Sentinel V3 does not claim to train or fine-tune a new language model.
+
+Review upstream licenses and acceptable-use terms before redistributing or commercially using third-party tools and models.
+
+---
+
+## Limitations and Responsible Interpretation
+
+The following limitations apply to the current research:
+
+- V3 uses a small, controlled, synthetic benchmark.
+- Business records, identities, tools, approvals, and protected canary values are simulated.
+- Results do not establish resistance to arbitrary real-world prompt injection.
+- The controls-off configuration is an application-level ablation, not a raw-model baseline.
+- The output guard's tested canary matching does not establish general-purpose data-loss prevention.
+- Individual ablations may be affected by interactions and compensating controls.
+- The benchmark does not replace independent external evaluation.
+- Application-level authorization is not equivalent to process isolation or a complete sandbox.
+- Earlier model-backed results are limited in scale and should be interpreted separately.
+- The benchmark's synthetic cases do not establish performance on independently authored or externally collected attack datasets.
+- No claim of a completed external train/test leakage audit is made.
+
+Sentinel V3 should be treated as a controlled research prototype rather than a production-ready security product.
+
+---
+
+## Work Completed Outside the Hackathon
+
+Sentinel is an evolving research prototype.
+
+Earlier authorization, model-backed, and V1/V2 experiments predate the current V3 benchmark work.
+
+The V3 benchmark, seven-control configuration, validation fixes, ablation experiments, and associated reports should be identified separately from those earlier contributions in the hackathon submission.
+
+The project does not claim that all historical work was created during the hackathon.
+
+---
+
+## Future Work
+
+Potential future directions include:
+
+- Evaluation on independent agent-security benchmarks.
+- Broader attack and benign-task coverage.
+- More targeted tests of individual controls and their interactions.
+- Testing transformed and semantic information leakage.
+- Evaluation across different agent architectures and language models.
+- Statistical analysis across repeated runs and independently authored datasets.
+- Testing with realistic tool environments and external data sources.
+- Evaluating stronger isolation boundaries beyond application-level authorization.
+
+---
 
 ## Research Status
 
-Sentinel is an ongoing AI safety and agent-security research prototype.
+Sentinel V3 is a controlled application-level agent-security research prototype.
 
-The current implementation combines:
+Its current results demonstrate measurable improvements on its designed synthetic benchmark while preserving benign task completion.
 
-- Prompt-injection detection and retrieved-content sanitization.
-- Independent application-level tool authorization.
-- Role and object-scope validation.
-- Argument and approval validation.
-- Model-backed safety experiments.
-- Controlled security evaluation and regression testing.
+Further independent evaluation is required before making broader security claims.
 
-Further work will focus on stronger authorization-boundary attacks, broader benign-task coverage, ablation studies, and external benchmark evaluation.
+---
 
-## Model-Backed Experiment Artifacts
+## License
 
-Detailed model-backed experiment records are available in:
-
-[`reports/model_backed/`](reports/model_backed/)
-
-Key reports:
-
-- [Master Experiment Report](reports/model_backed/sentinel_master_experiment_report.md)
-- [Master Experiment Report (JSON)](reports/model_backed/sentinel_master_experiment_report.json)
-- [Independent Holdout Report](reports/model_backed/sentinel_independent_holdout_report.json)
-- [Corrected SafeTune Comparison](reports/model_backed/tiny_aya_safetune_four_way_comparison_corrected.json)
-
-The reports include the 42-case Tiny Aya experiment, the 30-case diagnostic holdout, authorization evaluations, and SafeTune comparison records.
-
-## Output-Security Evaluation Artifacts
-
-- [Controlled Output-Security Benchmark](reports/output_security_benchmark_v2.json)
-
-Reproduce with:
-
-```bash
-python -m sentinel.run_output_security_benchmark
-```
-
-## V2 End-to-End Benchmark Artifacts
-
-- [V2 80-Case Benchmark Report](reports/sentinel_benchmark_v2_80cases.json)
-- Dataset: `data/processed_v2/`
-- Generator: `scripts/generate_benchmark_v2.py`
-- Runner: `src/sentinel/run_benchmark_v2.py`
-
-Reproduce with:
-
-~~~bash
-python -m sentinel.run_benchmark_v2
-~~~
-
-## Authorization Evaluation Artifacts
-
-- [Authorization-Focused Benchmark](reports/authorization_focused_benchmark.json)
-- [End-to-End Authorization Benchmark Comparison v4](reports/authorization_benchmark_comparison_v4.json)
-
-The benchmark can be reproduced locally using:
-
-```bash
-python scripts/run_authorization_benchmark.py
-```
+No project-level license has been assigned in this README. Check the repository's `LICENSE` file before redistribution or reuse. Third-party tools, models, and datasets remain subject to their respective licenses and terms.
