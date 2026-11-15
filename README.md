@@ -1,4 +1,4 @@
-﻿# Sentinel V3 â€” AI Agent Security Benchmark
+﻿# Sentinel V3  AI Agent Security Benchmark
 
 **A controlled evaluation of application-level security controls for AI agents, covering prompt injection, authorization abuse, tool execution, and sensitive-information disclosure.**
 
